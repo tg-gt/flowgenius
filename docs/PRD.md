@@ -133,4 +133,8 @@ interface ImmersiveWriterSettings {
 - **Readability**: Careful opacity controls and blur effects
 - **Compatibility**: Test with popular Obsidian themes
 
+### 10. **Technical Clarifications**
+
+See [Technical-Decisions.md](./Technical-Decisions.md) for detailed implementation decisions and open questions.
+
 This PRD gives us a clear roadmap and can be updated as we progress. The modular architecture will make it perfect for AI-assisted development in Cursor!
