@@ -1,3 +1,5 @@
+import { requestUrl } from 'obsidian';
+
 export class OpenAIClient {
     private apiKey: string;
     private baseUrl = 'https://api.openai.com/v1';
@@ -14,7 +16,8 @@ export class OpenAIClient {
             throw new Error('OpenAI API key not configured');
         }
 
-        const response = await fetch(`${this.baseUrl}/chat/completions`, {
+        const response = await requestUrl({
+            url: `${this.baseUrl}/chat/completions`,
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -40,12 +43,11 @@ export class OpenAIClient {
             })
         });
 
-        if (!response.ok) {
-            const error = await response.text();
-            throw new Error(`OpenAI API error: ${response.status} - ${error}`);
+        if (response.status !== 200) {
+            throw new Error(`OpenAI API error: ${response.status} - ${response.text}`);
         }
 
-        const data = await response.json();
+        const data = response.json;
         return data.choices[0].message.content;
     }
 
@@ -54,13 +56,14 @@ export class OpenAIClient {
      */
     async validateApiKey(): Promise<boolean> {
         try {
-            const response = await fetch(`${this.baseUrl}/models`, {
+            const response = await requestUrl({
+                url: `${this.baseUrl}/models`,
                 method: 'GET',
                 headers: {
                     'Authorization': `Bearer ${this.apiKey}`
                 }
             });
-            return response.ok;
+            return response.status === 200;
         } catch {
             return false;
         }

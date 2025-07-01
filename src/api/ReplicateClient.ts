@@ -1,3 +1,5 @@
+import { requestUrl } from 'obsidian';
+
 export class ReplicateClient {
     private apiKey: string;
     private baseUrl = 'https://api.replicate.com/v1';
@@ -15,7 +17,8 @@ export class ReplicateClient {
         }
 
         // Start the prediction
-        const predictionResponse = await fetch(`${this.baseUrl}/predictions`, {
+        const predictionResponse = await requestUrl({
+            url: `${this.baseUrl}/predictions`,
             method: 'POST',
             headers: {
                 'Authorization': `Token ${this.apiKey}`,
@@ -39,12 +42,11 @@ export class ReplicateClient {
             })
         });
 
-        if (!predictionResponse.ok) {
-            const error = await predictionResponse.text();
-            throw new Error(`Replicate API error: ${predictionResponse.status} - ${error}`);
+        if (predictionResponse.status !== 200 && predictionResponse.status !== 201) {
+            throw new Error(`Replicate API error: ${predictionResponse.status} - ${predictionResponse.text}`);
         }
 
-        const prediction = await predictionResponse.json();
+        const prediction = predictionResponse.json;
         
         // Poll for completion
         const imageUrl = await this.pollForCompletion(prediction.id);
@@ -59,17 +61,19 @@ export class ReplicateClient {
         let attempts = 0;
 
         while (attempts < maxAttempts) {
-            const response = await fetch(`${this.baseUrl}/predictions/${predictionId}`, {
+            const response = await requestUrl({
+                url: `${this.baseUrl}/predictions/${predictionId}`,
+                method: 'GET',
                 headers: {
                     'Authorization': `Token ${this.apiKey}`,
                 }
             });
 
-            if (!response.ok) {
+            if (response.status !== 200) {
                 throw new Error(`Failed to check prediction status: ${response.status}`);
             }
 
-            const prediction = await response.json();
+            const prediction = response.json;
 
             if (prediction.status === 'succeeded') {
                 return prediction.output[0]; // Return the first image URL
@@ -90,13 +94,14 @@ export class ReplicateClient {
      */
     async validateApiKey(): Promise<boolean> {
         try {
-            const response = await fetch(`${this.baseUrl}/predictions`, {
+            const response = await requestUrl({
+                url: `${this.baseUrl}/predictions`,
                 method: 'GET',
                 headers: {
                     'Authorization': `Token ${this.apiKey}`,
                 }
             });
-            return response.ok;
+            return response.status === 200;
         } catch {
             return false;
         }
