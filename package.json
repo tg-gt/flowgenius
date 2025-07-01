@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-sample-plugin",
+	"name": "obsidian-flow-genius",
 	"version": "1.0.0",
-	"description": "This is a sample plugin for Obsidian (https://obsidian.md)",
+	"description": "AI-powered immersive writing environment for Obsidian that generates contextual backgrounds",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",
