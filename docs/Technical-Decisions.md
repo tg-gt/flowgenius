@@ -95,3 +95,16 @@ This document clarifies key technical decisions for the FlowGenius Obsidian plug
 5. Add CSS injection for background display
 6. Add animation effects
 7. Polish UX and error handling 
+
+graph TD
+    A["User clicks Generate Background"] --> B["Extract Note Content<br/>Max 8000 chars"]
+    B --> C["Generate Prompt<br/>via OpenAI API"]
+    C --> D["Generate Image<br/>via Replicate API"]
+    D --> E["Apply Background<br/>to Vault"]
+    E --> F["Background Persists<br/>Until Changed"]
+    
+    G["User Settings"] --> |"API Keys"| C
+    G --> |"API Keys"| D
+    
+    H["Future: Generate 4 Options"] -.-> I["User Selects Preferred"]
+    I -.-> E
