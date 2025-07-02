@@ -91,6 +91,14 @@ export default class FlowGeniusPlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'test-overlay',
+			name: 'Test text overlay (red for visibility)',
+			callback: () => {
+				this.testTextOverlay();
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new FlowGeniusSettingTab(this.app, this));
 
@@ -222,6 +230,9 @@ export default class FlowGeniusPlugin extends Plugin {
 			return;
 		}
 
+		// Determine if we're in dark mode
+		const isDarkMode = document.body.classList.contains('theme-dark');
+
 		// Create and inject CSS that applies background directly to view-content
 		const styleEl = document.createElement('style');
 		styleEl.id = 'flow-genius-background-style';
@@ -233,38 +244,33 @@ export default class FlowGeniusPlugin extends Plugin {
 				background-size: cover !important;
 				background-position: center !important;
 				background-repeat: no-repeat !important;
-				${this.settings.animationStyle === 'subtle' ? 'animation: kenBurns 30s ease-in-out infinite alternate !important;' : ''}
+				background-attachment: fixed !important;
 			}
 			
-			/* Apply semi-transparent overlay to content for readability */
+			/* Add semi-transparent overlay to the entire content area for readability */
 			.view-content > * {
 				position: relative !important;
-				background-color: rgba(var(--background-primary-rgb), ${1 - this.settings.opacity}) !important;
+				background-color: ${isDarkMode ? 
+					`rgba(30, 30, 30, ${0.35 + (0.15 * (1 - this.settings.opacity))})` : 
+					`rgba(255, 255, 255, ${0.35 + (0.15 * (1 - this.settings.opacity))})`
+				} !important;
+			}
+			
+			/* Ensure proper padding */
+			.view-content .markdown-source-view.mod-cm6 .cm-editor,
+			.view-content .markdown-preview-view {
+				padding: 40px !important;
+			}
+			
+			/* Optional: Add subtle blur to just the content background */
+			.view-content > * {
 				backdrop-filter: blur(10px) !important;
-				padding: 20px !important;
-				border-radius: 8px !important;
-				margin: 10px !important;
-				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
-			}
-			
-			/* Ensure CodeMirror editor has proper background */
-			.view-content .cm-editor {
-				background-color: rgba(var(--background-primary-rgb), ${1 - this.settings.opacity}) !important;
-			}
-			
-			/* Ken Burns animation */
-			@keyframes kenBurns {
-				0% {
-					transform: scale(1) translate(0, 0);
-				}
-				100% {
-					transform: scale(1.05) translate(-2%, -2%);
-				}
+				-webkit-backdrop-filter: blur(10px) !important;
 			}
 		`;
 		
 		document.head.appendChild(styleEl);
-		console.log('FlowGenius: CSS background applied to view-content');
+		console.log('FlowGenius: CSS background applied with opacity:', this.settings.opacity);
 	}
 
 	applyBackground(imageUrl: string | null) {
@@ -471,6 +477,44 @@ export default class FlowGeniusPlugin extends Plugin {
 		document.head.appendChild(styleEl);
 		new Notice('Applied to workspace-split');
 	}
+
+	testTextOverlay() {
+		// Apply a bright red overlay to make sure the overlay system is working
+		const existingStyle = document.querySelector('#flow-genius-background-style');
+		if (existingStyle) existingStyle.remove();
+		
+		const styleEl = document.createElement('style');
+		styleEl.id = 'flow-genius-background-style';
+		styleEl.textContent = `
+			.view-content {
+				position: relative !important;
+				background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff) !important;
+			}
+			
+			.view-content > *::before {
+				content: '' !important;
+				position: absolute !important;
+				top: 0 !important;
+				left: 50% !important;
+				transform: translateX(-50%) !important;
+				width: 900px !important;
+				max-width: 100% !important;
+				height: 100% !important;
+				background: rgba(255, 0, 0, 0.8) !important;
+				z-index: -1 !important;
+			}
+			
+			.view-content .markdown-source-view.mod-cm6 .cm-editor,
+			.view-content .markdown-preview-view {
+				padding: 40px 60px !important;
+				max-width: 900px !important;
+				margin: 0 auto !important;
+				position: relative !important;
+			}
+		`;
+		document.head.appendChild(styleEl);
+		new Notice('Red overlay applied - if you don\'t see red, the overlay isn\'t working');
+	}
 }
 
 class FlowGeniusSettingTab extends PluginSettingTab {
@@ -546,18 +590,7 @@ class FlowGeniusSettingTab extends PluginSettingTab {
 					}
 				}));
 
-		new Setting(containerEl)
-			.setName('Animation Style')
-			.setDesc('How the background should animate')
-			.addDropdown(dropdown => dropdown
-				.addOption('subtle', 'Subtle (Ken Burns)')
-				.addOption('dynamic', 'Dynamic')
-				.addOption('static', 'Static')
-				.setValue(this.plugin.settings.animationStyle)
-				.onChange(async (value: 'subtle' | 'dynamic' | 'static') => {
-					this.plugin.settings.animationStyle = value;
-					await this.plugin.saveSettings();
-				}));
+		// Animation setting removed - future: AI-generated animated backgrounds
 
 		new Setting(containerEl)
 			.setName('Image Style')
