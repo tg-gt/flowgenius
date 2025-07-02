@@ -18,6 +18,7 @@ export default class FlowGeniusPlugin extends Plugin {
 	settings: FlowGeniusSettings;
 	statusBarItem: HTMLElement;
 	backgroundStyleEl: HTMLStyleElement;
+	backgroundEl: HTMLElement | null = null;
 	workflow: GenerationWorkflow;
 
 	async onload() {
@@ -56,6 +57,40 @@ export default class FlowGeniusPlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'debug-background',
+			name: 'Debug background status',
+			callback: () => {
+				this.debugBackground();
+			}
+		});
+
+		this.addCommand({
+			id: 'test-background',
+			name: 'Apply test background (gradient)',
+			callback: () => {
+				// Apply a test gradient background to verify the system works
+				this.applyTestBackground();
+			}
+		});
+
+		this.addCommand({
+			id: 'test-css-background',
+			name: 'Apply test background (CSS method)',
+			callback: () => {
+				// Test using pure CSS injection
+				this.applyCSSBackground();
+			}
+		});
+
+		this.addCommand({
+			id: 'test-all-methods',
+			name: 'Test all background methods',
+			callback: () => {
+				this.testAllBackgroundMethods();
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new FlowGeniusSettingTab(this.app, this));
 
@@ -65,13 +100,17 @@ export default class FlowGeniusPlugin extends Plugin {
 
 		// Restore background if exists
 		if (this.settings.currentBackground) {
-			this.applyBackground(this.settings.currentBackground);
+			this.applyCSSBackgroundStyle(`url('${this.settings.currentBackground}')`);
 		}
 	}
 
 	onunload() {
 		// Remove background style element
 		this.backgroundStyleEl.remove();
+		// Remove background element if it exists
+		if (this.backgroundEl) {
+			this.backgroundEl.remove();
+		}
 	}
 
 	async loadSettings() {
@@ -91,7 +130,8 @@ export default class FlowGeniusPlugin extends Plugin {
 			(imageUrl) => {
 				this.settings.currentBackground = imageUrl;
 				this.saveSettings();
-				this.applyBackground(imageUrl);
+				// Use CSS method for generated backgrounds
+				this.applyCSSBackgroundStyle(`url('${imageUrl}')`);
 			}
 		);
 	}
@@ -99,53 +139,337 @@ export default class FlowGeniusPlugin extends Plugin {
 	clearBackground() {
 		this.settings.currentBackground = null;
 		this.saveSettings();
-		this.applyBackground(null);
+		this.applyCSSBackgroundStyle('');
+		// Also clean up any DOM elements
+		if (this.backgroundEl) {
+			this.backgroundEl.remove();
+			this.backgroundEl = null;
+		}
 		new Notice('Background cleared');
 	}
 
-	applyBackground(imageUrl: string | null) {
-		if (!imageUrl) {
-			this.backgroundStyleEl.textContent = '';
+	debugBackground() {
+		console.log('=== FlowGenius Debug Info ===');
+		console.log('Current background URL:', this.settings.currentBackground);
+		console.log('Opacity setting:', this.settings.opacity);
+		console.log('Animation style:', this.settings.animationStyle);
+		
+		// Check if background element exists
+		console.log('Background element exists:', !!this.backgroundEl);
+		if (this.backgroundEl) {
+			console.log('Background element style:', this.backgroundEl.style.cssText);
+			console.log('Background element parent:', this.backgroundEl.parentElement?.className);
+		}
+		
+		// Check DOM structure
+		const workspace = document.querySelector('.workspace');
+		console.log('Workspace element found:', !!workspace);
+		
+		const bgElement = document.querySelector('.flow-genius-background');
+		console.log('Background element in DOM:', !!bgElement);
+		
+		if (bgElement) {
+			const computedStyle = window.getComputedStyle(bgElement as HTMLElement);
+			console.log('Background computed styles:');
+			console.log('- background-image:', computedStyle.backgroundImage);
+			console.log('- opacity:', computedStyle.opacity);
+			console.log('- z-index:', computedStyle.zIndex);
+			console.log('- position:', computedStyle.position);
+		}
+		
+		new Notice('Debug info logged to console');
+	}
+
+	applyTestBackground() {
+		// Create a data URL for a gradient background to test
+		const canvas = document.createElement('canvas');
+		canvas.width = 1024;
+		canvas.height = 768;
+		const ctx = canvas.getContext('2d');
+		if (ctx) {
+			// Create a gradient
+			const gradient = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+			gradient.addColorStop(0, '#667eea');
+			gradient.addColorStop(0.5, '#764ba2');
+			gradient.addColorStop(1, '#f093fb');
+			ctx.fillStyle = gradient;
+			ctx.fillRect(0, 0, canvas.width, canvas.height);
+			
+			// Convert to data URL and apply
+			const dataUrl = canvas.toDataURL();
+			this.settings.currentBackground = dataUrl;
+			this.saveSettings();
+			this.applyBackground(dataUrl);
+			new Notice('Test gradient background applied!');
+		}
+	}
+
+	applyCSSBackground() {
+		// Test gradient using pure CSS
+		const testGradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)';
+		this.applyCSSBackgroundStyle(testGradient);
+		new Notice('CSS gradient background applied!');
+	}
+
+	applyCSSBackgroundStyle(backgroundImage: string) {
+		// Remove any existing background style
+		const existingStyle = document.querySelector('#flow-genius-background-style');
+		if (existingStyle) {
+			existingStyle.remove();
+		}
+
+		if (!backgroundImage) {
 			return;
 		}
 
-		// Apply background with animation
-		const css = `
-			.workspace {
-				position: relative;
+		// Create and inject CSS that applies background directly to view-content
+		const styleEl = document.createElement('style');
+		styleEl.id = 'flow-genius-background-style';
+		styleEl.textContent = `
+			/* FlowGenius Background Styles */
+			.view-content {
+				position: relative !important;
+				background-image: ${backgroundImage} !important;
+				background-size: cover !important;
+				background-position: center !important;
+				background-repeat: no-repeat !important;
+				${this.settings.animationStyle === 'subtle' ? 'animation: kenBurns 30s ease-in-out infinite alternate !important;' : ''}
 			}
 			
-			.workspace::before {
-				content: '';
-				position: absolute;
-				top: 0;
-				left: 0;
-				right: 0;
-				bottom: 0;
-				background-image: url('${imageUrl}');
-				background-size: cover;
-				background-position: center;
-				opacity: ${this.settings.opacity};
-				z-index: -1;
-				pointer-events: none;
-				animation: kenBurns 30s ease-in-out infinite alternate;
+			/* Apply semi-transparent overlay to content for readability */
+			.view-content > * {
+				position: relative !important;
+				background-color: rgba(var(--background-primary-rgb), ${1 - this.settings.opacity}) !important;
+				backdrop-filter: blur(10px) !important;
+				padding: 20px !important;
+				border-radius: 8px !important;
+				margin: 10px !important;
+				box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1) !important;
 			}
 			
+			/* Ensure CodeMirror editor has proper background */
+			.view-content .cm-editor {
+				background-color: rgba(var(--background-primary-rgb), ${1 - this.settings.opacity}) !important;
+			}
+			
+			/* Ken Burns animation */
 			@keyframes kenBurns {
 				0% {
 					transform: scale(1) translate(0, 0);
 				}
 				100% {
-					transform: scale(1.1) translate(-2%, -2%);
+					transform: scale(1.05) translate(-2%, -2%);
 				}
 			}
 		`;
+		
+		document.head.appendChild(styleEl);
+		console.log('FlowGenius: CSS background applied to view-content');
+	}
 
-		this.backgroundStyleEl.textContent = css;
+	applyBackground(imageUrl: string | null) {
+		console.log('FlowGenius: Applying background:', imageUrl);
+		
+		// Remove existing background element if it exists
+		if (this.backgroundEl) {
+			this.backgroundEl.remove();
+			this.backgroundEl = null;
+		}
+		
+		if (!imageUrl) {
+			document.body.removeClass('flow-genius-active');
+			return;
+		}
+		
+		// Add body class for CSS fallback
+		document.body.addClass('flow-genius-active');
+		
+		// Create background div
+		this.backgroundEl = document.createElement('div');
+		this.backgroundEl.className = 'flow-genius-background';
+		this.backgroundEl.style.cssText = `
+			position: fixed !important;
+			top: 0 !important;
+			left: 0 !important;
+			width: 100% !important;
+			height: 100% !important;
+			background-image: url('${imageUrl}') !important;
+			background-size: cover !important;
+			background-position: center !important;
+			background-repeat: no-repeat !important;
+			opacity: ${this.settings.opacity} !important;
+			z-index: -1 !important;
+			pointer-events: none !important;
+		`;
+		
+		// Add animation if enabled
+		if (this.settings.animationStyle === 'subtle') {
+			this.backgroundEl.style.animation = 'kenBurns 30s ease-in-out infinite alternate';
+		}
+		
+		// Find the app root element - this is the main Obsidian container
+		const appContainer = document.querySelector('.app-container') || 
+						   document.querySelector('.workspace') || 
+						   document.querySelector('body > div');
+		
+		if (appContainer) {
+			console.log('FlowGenius: Injecting into app container:', appContainer.className);
+			// Insert as the first child of the app container
+			appContainer.insertBefore(this.backgroundEl, appContainer.firstChild);
+			
+			// Make sure the container has proper positioning
+			const containerStyle = window.getComputedStyle(appContainer);
+			if (containerStyle.position === 'static') {
+				(appContainer as HTMLElement).style.position = 'relative';
+			}
+			
+			// Ensure the container itself has a z-index
+			(appContainer as HTMLElement).style.zIndex = '0';
+		} else {
+			// Fallback: insert into body
+			console.log('FlowGenius: Fallback - injecting into body');
+			document.body.insertBefore(this.backgroundEl, document.body.firstChild);
+		}
+		
+		// Add keyframes animation if not already present
+		if (!document.querySelector('#flow-genius-animations')) {
+			const animationStyle = document.createElement('style');
+			animationStyle.id = 'flow-genius-animations';
+			animationStyle.textContent = `
+				@keyframes kenBurns {
+					0% {
+						transform: scale(1) translate(0, 0);
+					}
+					100% {
+						transform: scale(1.1) translate(-2%, -2%);
+					}
+				}
+				
+				/* Ensure the background stays behind content */
+				.flow-genius-background {
+					position: fixed !important;
+					z-index: -1 !important;
+				}
+				
+				/* Make sure main content areas are above the background */
+				.workspace,
+				.workspace-container,
+				.workspace-tabs,
+				.workspace-split {
+					position: relative !important;
+					background: transparent !important;
+				}
+				
+				/* Ensure the editor panes have proper backgrounds */
+				.view-content,
+				.markdown-source-view,
+				.markdown-preview-view {
+					background-color: var(--background-primary) !important;
+				}
+			`;
+			document.head.appendChild(animationStyle);
+		}
+		
+		console.log('FlowGenius: Background element injected');
+		if (this.backgroundEl && this.backgroundEl.parentElement) {
+			console.log('FlowGenius: Parent element:', this.backgroundEl.parentElement.tagName, this.backgroundEl.parentElement.className);
+			console.log('FlowGenius: Background computed position:', window.getComputedStyle(this.backgroundEl).position);
+			console.log('FlowGenius: Background computed z-index:', window.getComputedStyle(this.backgroundEl).zIndex);
+		}
+		
+		// Verify the image loads
+		const img = new Image();
+		img.onload = () => {
+			console.log('FlowGenius: Background image loaded successfully');
+			new Notice('Background applied successfully!');
+		};
+		img.onerror = (error) => {
+			console.error('FlowGenius: Failed to load background image:', error);
+			new Notice('Failed to load background image - check console');
+		};
+		img.src = imageUrl;
 	}
 
 	updateStatus(message: string) {
 		this.statusBarItem.setText(message);
+	}
+
+	testAllBackgroundMethods() {
+		// Create a test gradient
+		const testGradient = 'linear-gradient(135deg, #667eea 0%, #764ba2 50%, #f093fb 100%)';
+		
+		// Method 1: Apply to workspace-leaf-content (current approach)
+		console.log('Testing Method 1: workspace-leaf-content');
+		this.applyCSSBackgroundStyle(testGradient);
+		
+		// Let user see the result before showing the modal
+		new Notice('Applied to workspace-leaf-content - check if visible');
+		
+		// Show a modal with other options
+		const modal = new Modal(this.app);
+		modal.contentEl.createEl('h2', { text: 'Background Test Methods' });
+		
+		const method2Btn = modal.contentEl.createEl('button', { text: 'Test Method 2: View Content Direct' });
+		method2Btn.onclick = () => {
+			this.applyDirectViewContentBackground(testGradient);
+			modal.close();
+		};
+		
+		const method3Btn = modal.contentEl.createEl('button', { text: 'Test Method 3: Workspace Split' });
+		method3Btn.onclick = () => {
+			this.applyWorkspaceSplitBackground(testGradient);
+			modal.close();
+		};
+		
+		modal.open();
+	}
+
+	applyDirectViewContentBackground(backgroundImage: string) {
+		const existingStyle = document.querySelector('#flow-genius-background-style');
+		if (existingStyle) existingStyle.remove();
+		
+		const styleEl = document.createElement('style');
+		styleEl.id = 'flow-genius-background-style';
+		styleEl.textContent = `
+			.view-content {
+				position: relative !important;
+				background-image: ${backgroundImage} !important;
+				background-size: cover !important;
+				background-position: center !important;
+			}
+			
+			.view-content > * {
+				position: relative !important;
+				background-color: rgba(var(--background-primary-rgb), 0.9) !important;
+				backdrop-filter: blur(10px) !important;
+				padding: 20px !important;
+				border-radius: 8px !important;
+			}
+		`;
+		document.head.appendChild(styleEl);
+		new Notice('Applied directly to view-content');
+	}
+
+	applyWorkspaceSplitBackground(backgroundImage: string) {
+		const existingStyle = document.querySelector('#flow-genius-background-style');
+		if (existingStyle) existingStyle.remove();
+		
+		const styleEl = document.createElement('style');
+		styleEl.id = 'flow-genius-background-style';
+		styleEl.textContent = `
+			.workspace-split.mod-root {
+				position: relative !important;
+				background-image: ${backgroundImage} !important;
+				background-size: cover !important;
+				background-position: center !important;
+			}
+			
+			.view-content {
+				background-color: rgba(var(--background-primary-rgb), 0.9) !important;
+			}
+		`;
+		document.head.appendChild(styleEl);
+		new Notice('Applied to workspace-split');
 	}
 }
 
@@ -218,7 +542,7 @@ class FlowGeniusSettingTab extends PluginSettingTab {
 					await this.plugin.saveSettings();
 					// Update background immediately if one exists
 					if (this.plugin.settings.currentBackground) {
-						this.plugin.applyBackground(this.plugin.settings.currentBackground);
+						this.plugin.applyCSSBackgroundStyle(`url('${this.plugin.settings.currentBackground}')`);
 					}
 				}));
 

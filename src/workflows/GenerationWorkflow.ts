@@ -65,6 +65,7 @@ export class GenerationWorkflow {
             onStatusUpdate('Generating background image...');
             
             const imageUrl = await this.replicateClient.generateImage(imagePrompt);
+            console.log('FlowGenius: Generated image URL:', imageUrl);
             this.state.imageUrl = imageUrl;
 
             // Phase 4: Apply background

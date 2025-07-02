@@ -6,3 +6,25 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+/* FlowGenius Plugin Styles */
+
+/* Ensure workspace can have backgrounds */
+.workspace-split.mod-root {
+    position: relative !important;
+}
+
+/* Alternative approach using body class when background is active */
+body.flow-genius-active .workspace-split.mod-root::before {
+    content: '' !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    z-index: -1 !important;
+    pointer-events: none !important;
+    background-size: cover !important;
+    background-position: center !important;
+    background-repeat: no-repeat !important;
+}
