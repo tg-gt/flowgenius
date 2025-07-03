@@ -99,6 +99,14 @@ export default class FlowGeniusPlugin extends Plugin {
 			}
 		});
 
+		this.addCommand({
+			id: 'debug-gradient-overlay',
+			name: 'Debug gradient overlay (bright red test)',
+			callback: () => {
+				this.debugGradientOverlay();
+			}
+		});
+
 		// Add settings tab
 		this.addSettingTab(new FlowGeniusSettingTab(this.app, this));
 
@@ -247,30 +255,54 @@ export default class FlowGeniusPlugin extends Plugin {
 				background-attachment: fixed !important;
 			}
 			
-			/* Add semi-transparent overlay to the entire content area for readability */
+			/* Create a white gradient overlay that fades to transparent at edges */
+			.view-content::before {
+				content: '' !important;
+				position: absolute !important;
+				top: 0 !important;
+				left: 0 !important;
+				right: 0 !important;
+				bottom: 0 !important;
+				z-index: 1 !important;
+				pointer-events: none !important;
+				background: ${isDarkMode ? `
+					radial-gradient(ellipse 70% 60% at center, 
+						rgba(30, 30, 30, 0.95) 0%, 
+						rgba(30, 30, 30, 0.85) 40%, 
+						rgba(30, 30, 30, 0.4) 70%, 
+						transparent 100%)
+				` : `
+					radial-gradient(ellipse 70% 60% at center, 
+						rgba(255, 255, 255, 0.95) 0%, 
+						rgba(255, 255, 255, 0.85) 40%, 
+						rgba(255, 255, 255, 0.4) 70%, 
+						transparent 100%)
+				`} !important;
+			}
+			
+			/* Ensure content is above the gradient overlay */
 			.view-content > * {
 				position: relative !important;
-				background-color: ${isDarkMode ? 
-					`rgba(30, 30, 30, ${0.35 + (0.15 * (1 - this.settings.opacity))})` : 
-					`rgba(255, 255, 255, ${0.35 + (0.15 * (1 - this.settings.opacity))})`
-				} !important;
+				z-index: 2 !important;
 			}
 			
-			/* Ensure proper padding */
+			/* Ensure proper padding for content */
 			.view-content .markdown-source-view.mod-cm6 .cm-editor,
 			.view-content .markdown-preview-view {
-				padding: 40px !important;
+				padding: 40px 60px !important;
+				max-width: 900px !important;
+				margin: 0 auto !important;
 			}
 			
-			/* Optional: Add subtle blur to just the content background */
-			.view-content > * {
-				backdrop-filter: blur(10px) !important;
-				-webkit-backdrop-filter: blur(10px) !important;
+			/* Optional: Add subtle backdrop blur for enhanced readability */
+			.view-content::before {
+				backdrop-filter: blur(${this.settings.opacity * 20}px) !important;
+				-webkit-backdrop-filter: blur(${this.settings.opacity * 20}px) !important;
 			}
 		`;
 		
 		document.head.appendChild(styleEl);
-		console.log('FlowGenius: CSS background applied with opacity:', this.settings.opacity);
+		console.log('FlowGenius: CSS background applied with gradient overlay, opacity:', this.settings.opacity);
 	}
 
 	applyBackground(imageUrl: string | null) {
@@ -479,6 +511,44 @@ export default class FlowGeniusPlugin extends Plugin {
 	}
 
 	testTextOverlay() {
+		// Apply a bright red overlay to make sure the overlay system is working
+		const existingStyle = document.querySelector('#flow-genius-background-style');
+		if (existingStyle) existingStyle.remove();
+		
+		const styleEl = document.createElement('style');
+		styleEl.id = 'flow-genius-background-style';
+		styleEl.textContent = `
+			.view-content {
+				position: relative !important;
+				background: linear-gradient(45deg, #ff0000, #00ff00, #0000ff) !important;
+			}
+			
+			.view-content > *::before {
+				content: '' !important;
+				position: absolute !important;
+				top: 0 !important;
+				left: 50% !important;
+				transform: translateX(-50%) !important;
+				width: 900px !important;
+				max-width: 100% !important;
+				height: 100% !important;
+				background: rgba(255, 0, 0, 0.8) !important;
+				z-index: -1 !important;
+			}
+			
+			.view-content .markdown-source-view.mod-cm6 .cm-editor,
+			.view-content .markdown-preview-view {
+				padding: 40px 60px !important;
+				max-width: 900px !important;
+				margin: 0 auto !important;
+				position: relative !important;
+			}
+		`;
+		document.head.appendChild(styleEl);
+		new Notice('Red overlay applied - if you don\'t see red, the overlay isn\'t working');
+	}
+
+	debugGradientOverlay() {
 		// Apply a bright red overlay to make sure the overlay system is working
 		const existingStyle = document.querySelector('#flow-genius-background-style');
 		if (existingStyle) existingStyle.remove();
