@@ -11,7 +11,8 @@ const DEFAULT_SETTINGS: FlowGeniusSettings = {
 	imageStyle: 'photorealistic',
 	customInstructions: '',
 	enabledFolders: [],
-	currentBackground: null
+	currentBackground: null,
+	enhancedPromptGeneration: true
 }
 
 export default class FlowGeniusPlugin extends Plugin {
@@ -135,6 +136,8 @@ export default class FlowGeniusPlugin extends Plugin {
 
 	async saveSettings() {
 		await this.saveData(this.settings);
+		// Update workflow with new settings
+		this.workflow = new GenerationWorkflow(this.settings);
 	}
 
 	async generateBackground() {
@@ -690,6 +693,19 @@ class FlowGeniusSettingTab extends PluginSettingTab {
 				.setValue(this.plugin.settings.customInstructions)
 				.onChange(async (value) => {
 					this.plugin.settings.customInstructions = value;
+					await this.plugin.saveSettings();
+				}));
+
+		// Advanced Settings Section
+		containerEl.createEl('h3', {text: 'Advanced Settings'});
+
+		new Setting(containerEl)
+			.setName('Enhanced Prompt Generation')
+			.setDesc('Use advanced content analysis for better background generation (requires additional API calls)')
+			.addToggle(toggle => toggle
+				.setValue(this.plugin.settings.enhancedPromptGeneration)
+				.onChange(async (value) => {
+					this.plugin.settings.enhancedPromptGeneration = value;
 					await this.plugin.saveSettings();
 				}));
 	}

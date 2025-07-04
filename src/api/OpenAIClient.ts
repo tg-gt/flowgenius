@@ -1,21 +1,48 @@
 import { requestUrl } from 'obsidian';
+import { SmartPromptWorkflow } from '../workflows/SmartPromptWorkflow';
 
 export class OpenAIClient {
     private apiKey: string;
     private baseUrl = 'https://api.openai.com/v1';
+    private smartPromptWorkflow: SmartPromptWorkflow;
 
     constructor(apiKey: string) {
         this.apiKey = apiKey;
+        this.smartPromptWorkflow = new SmartPromptWorkflow(apiKey);
     }
 
     /**
      * Generates an optimized image generation prompt using OpenAI
+     * Enhanced with SmartPromptWorkflow for better context analysis
      */
-    async generateImagePrompt(contentContext: string): Promise<string> {
+    async generateImagePrompt(contentContext: string, useEnhancedGeneration: boolean = true): Promise<string> {
         if (!this.apiKey) {
             throw new Error('OpenAI API key not configured');
         }
 
+        // Use SmartPromptWorkflow only if enabled
+        if (useEnhancedGeneration) {
+            try {
+                console.log('FlowGenius: Using SmartPromptWorkflow for enhanced prompt generation');
+                const optimizedPrompt = await this.smartPromptWorkflow.execute(contentContext);
+                console.log('FlowGenius: SmartPromptWorkflow succeeded');
+                return optimizedPrompt;
+            } catch (error) {
+                console.warn('FlowGenius: SmartPromptWorkflow failed, falling back to legacy method:', error);
+                
+                // Fallback to original implementation
+                return await this.generateImagePromptLegacy(contentContext);
+            }
+        }
+
+        // Use legacy method when enhanced generation is disabled
+        return await this.generateImagePromptLegacy(contentContext);
+    }
+
+    /**
+     * Original image prompt generation method (fallback)
+     */
+    private async generateImagePromptLegacy(contentContext: string): Promise<string> {
         const response = await requestUrl({
             url: `${this.baseUrl}/chat/completions`,
             method: 'POST',

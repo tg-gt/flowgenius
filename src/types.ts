@@ -8,4 +8,5 @@ export interface FlowGeniusSettings {
     customInstructions: string;
     enabledFolders: string[];
     currentBackground: string | null;
+    enhancedPromptGeneration: boolean;
 } 

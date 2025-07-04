@@ -57,7 +57,7 @@ export class GenerationWorkflow {
                 this.settings.imageStyle
             );
             
-            const imagePrompt = await this.openAIClient.generateImagePrompt(contextPrompt);
+            const imagePrompt = await this.openAIClient.generateImagePrompt(contextPrompt, this.settings.enhancedPromptGeneration);
             this.state.prompt = imagePrompt;
 
             // Phase 3: Generate image
