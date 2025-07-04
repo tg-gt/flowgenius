@@ -238,8 +238,10 @@ export default class FlowGeniusPlugin extends Plugin {
 			return;
 		}
 
-		// Determine if we're in dark mode
+		// Better dark mode detection - check both body class and theme variables
 		const isDarkMode = document.body.classList.contains('theme-dark');
+		console.log('FlowGenius: Theme detection - isDarkMode:', isDarkMode);
+		console.log('FlowGenius: Background image URL:', backgroundImage);
 
 		// Create and inject CSS that applies background directly to view-content
 		const styleEl = document.createElement('style');
@@ -247,62 +249,69 @@ export default class FlowGeniusPlugin extends Plugin {
 		styleEl.textContent = `
 			/* FlowGenius Background Styles */
 			.view-content {
-				position: relative !important;
 				background-image: ${backgroundImage} !important;
 				background-size: cover !important;
 				background-position: center !important;
 				background-repeat: no-repeat !important;
-				background-attachment: fixed !important;
+				background-attachment: scroll !important;
 			}
-			
-			/* Create a white gradient overlay that fades to transparent at edges */
-			.view-content::before {
-				content: '' !important;
-				position: absolute !important;
-				top: 0 !important;
-				left: 0 !important;
-				right: 0 !important;
-				bottom: 0 !important;
-				z-index: 1 !important;
-				pointer-events: none !important;
+
+			/* Create a subtle reading area with debug border */
+			.view-content .cm-editor,
+			.view-content .markdown-preview-view {
+				position: relative !important;
+				margin: 0 25% !important;
+				max-width: 900px !important;
+				padding: 40px 60px !important;
 				background: ${isDarkMode ? `
-					radial-gradient(ellipse 70% 60% at center, 
-						rgba(30, 30, 30, 0.95) 0%, 
-						rgba(30, 30, 30, 0.85) 40%, 
-						rgba(30, 30, 30, 0.4) 70%, 
+					linear-gradient(to right,
+						transparent 0%,
+						rgba(30, 30, 30, 0.7) 15%,
+						rgba(30, 30, 30, 0.8) 50%,
+						rgba(30, 30, 30, 0.8) 80%,
 						transparent 100%)
 				` : `
-					radial-gradient(ellipse 70% 60% at center, 
-						rgba(255, 255, 255, 0.95) 0%, 
-						rgba(255, 255, 255, 0.85) 40%, 
-						rgba(255, 255, 255, 0.4) 70%, 
+					linear-gradient(to right,
+						transparent 0%,
+						rgba(255, 255, 255, 0.7) 15%,
+						rgba(255, 255, 255, 0.8) 50%,
+						rgba(255, 255, 255, 0.8) 80%,
 						transparent 100%)
 				`} !important;
+				border-radius: 8px !important;
 			}
-			
-			/* Ensure content is above the gradient overlay */
-			.view-content > * {
-				position: relative !important;
-				z-index: 2 !important;
+
+			/* Make scrollbar more seamless */
+			.view-content .cm-scroller {
+				scrollbar-width: thin !important;
+				scrollbar-color: transparent transparent !important;
 			}
-			
-			/* Ensure proper padding for content */
-			.view-content .markdown-source-view.mod-cm6 .cm-editor,
-			.view-content .markdown-preview-view {
-				padding: 40px 60px !important;
-				max-width: 900px !important;
-				margin: 0 auto !important;
+
+			.view-content .cm-scroller::-webkit-scrollbar {
+				width: 8px !important;
+				background: transparent !important;
 			}
-			
-			/* Optional: Add subtle backdrop blur for enhanced readability */
-			.view-content::before {
-				backdrop-filter: blur(${this.settings.opacity * 20}px) !important;
-				-webkit-backdrop-filter: blur(${this.settings.opacity * 20}px) !important;
+
+			.view-content .cm-scroller::-webkit-scrollbar-track {
+				background: transparent !important;
+			}
+
+			.view-content .cm-scroller::-webkit-scrollbar-thumb {
+				background: rgba(255, 255, 255, 0.1) !important;
+				border-radius: 4px !important;
+				transition: background 0.2s ease !important;
+			}
+
+			.view-content .cm-scroller::-webkit-scrollbar-thumb:hover {
+				background: rgba(255, 255, 255, 0.3) !important;
+			}
+
+			.view-content .cm-scroller::-webkit-scrollbar-corner {
+				background: transparent !important;
 			}
 		`;
-		
 		document.head.appendChild(styleEl);
-		console.log('FlowGenius: CSS background applied with gradient overlay, opacity:', this.settings.opacity);
+		console.log('FlowGenius: CSS applied successfully');
 	}
 
 	applyBackground(imageUrl: string | null) {
